@@ -9,10 +9,13 @@ import (
 )
 
 func main() {
-	store := storage.NewPostStore()
-	// inject store dependency to postHandler
-	postHandler := handlers.NewPostHandler(store)
+	postStore := storage.NewPostStore()
+	userStore := storage.NewUserStore()
+	// inject Store dependency to Handlers
+	postHandler := handlers.NewPostHandler(postStore)
+	userHandler := handlers.NewUserHandler(userStore)
 	http.Handle("/posts", postHandler)
+	http.Handle("/users", userHandler)
 
 	addr := ":8080"
 
