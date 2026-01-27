@@ -10,6 +10,7 @@ import (
 
 func main() {
 	store := storage.NewPostStore()
+	// inject store dependency to postHandler
 	postHandler := handlers.NewPostHandler(store)
 	http.Handle("/posts", postHandler)
 

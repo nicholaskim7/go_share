@@ -1,5 +1,6 @@
 package models
 
+// structure of data
 import "time"
 
 type Post struct {

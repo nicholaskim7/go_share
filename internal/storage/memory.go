@@ -1,5 +1,6 @@
 package storage
 
+// db functions added in the future
 import (
 	"sync"
 	"time"
@@ -24,7 +25,10 @@ func NewPostStore() *PostStore {
 func (s *PostStore) GetAll() []models.Post {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.posts
+	// return copy to prevent accidental modifications or read while other is writing
+	cp := make([]models.Post, len(s.posts))
+	copy(cp, s.posts)
+	return cp
 }
 
 func (s *PostStore) Create(post models.Post) models.Post {

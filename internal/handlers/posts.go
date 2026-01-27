@@ -1,5 +1,6 @@
 package handlers
 
+// implementing handlers that will use db functions
 import (
 	"encoding/json"
 	"net/http"
@@ -12,6 +13,7 @@ type PostHandler struct {
 	store *storage.PostStore
 }
 
+// ensure that every new post handler has a store specifically Poststore
 func NewPostHandler(store *storage.PostStore) *PostHandler {
 	return &PostHandler{store: store}
 }
@@ -37,6 +39,7 @@ func (h *PostHandler) getPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PostHandler) createPost(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	var newPost models.Post
 	if err := json.NewDecoder(r.Body).Decode(&newPost); err != nil {
 		http.Error(w, "invalid json body", http.StatusBadRequest)
