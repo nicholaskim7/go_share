@@ -10,11 +10,11 @@ import (
 )
 
 type PostHandler struct {
-	store *storage.PostStore
+	store storage.PostStore
 }
 
 // ensure that every new post handler has a store specifically Poststore
-func NewPostHandler(store *storage.PostStore) *PostHandler {
+func NewPostHandler(store storage.PostStore) *PostHandler {
 	return &PostHandler{store: store}
 }
 
@@ -32,8 +32,13 @@ func (h *PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *PostHandler) getPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	posts, err := h.store.GetAll(r.Context())
+	if err != nil {
+		http.Error(w, "failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(h.store.GetAll()); err != nil {
+	if err := json.NewEncoder(w).Encode(posts); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -41,14 +46,23 @@ func (h *PostHandler) getPosts(w http.ResponseWriter, r *http.Request) {
 func (h *PostHandler) createPost(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var newPost models.Post
+	// decode request body into new post
 	if err := json.NewDecoder(r.Body).Decode(&newPost); err != nil {
 		http.Error(w, "invalid json body", http.StatusBadRequest)
 		return
 	}
-	created := h.store.Create(newPost)
+	// minimal validation post must have at least title and body
+	if newPost.Title == "" || newPost.Body == "" {
+		http.Error(w, "title or body is required", http.StatusBadRequest)
+		return
+	}
+	// call db method create to insert new post
+	created, err := h.store.Create(r.Context(), newPost)
+	if err != nil {
+		http.Error(w, "failed to create post: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(created); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	json.NewEncoder(w).Encode(created)
 }

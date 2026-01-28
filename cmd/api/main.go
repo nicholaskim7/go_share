@@ -1,24 +1,52 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/nicholaskim7/go_share/internal/handlers"
+	"github.com/nicholaskim7/go_share/internal/services"
 	"github.com/nicholaskim7/go_share/internal/storage"
 )
 
 func main() {
-	postStore := storage.NewPostStore()
-	userStore := storage.NewUserStore()
-	// inject Store dependency to Handlers
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Database connection established")
+
+	postStore := storage.NewPostDBStore(db)
+	userStore := storage.NewUserDBStore(db)
+	userService := services.NewUserService(userStore)
+	// inject Store/service dependency to Handlers
 	postHandler := handlers.NewPostHandler(postStore)
-	userHandler := handlers.NewUserHandler(userStore)
+	userHandler := handlers.NewUserHandler(userService)
 	http.Handle("/posts", postHandler)
 	http.Handle("/users", userHandler)
 
 	addr := ":8080"
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      nil,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	log.Printf("Server starting on http://localhost%s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal(server.ListenAndServe())
 }
