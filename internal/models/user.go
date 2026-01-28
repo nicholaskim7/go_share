@@ -12,3 +12,8 @@ type User struct {
 	Password    string    `json:"password"`
 	DateCreated time.Time `json:"date_created"`
 }
+
+type UserLoginPayload struct {
+	UserName string `json:"user_name"`
+	Password string `json:"password"`
+}

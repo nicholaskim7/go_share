@@ -10,4 +10,5 @@ import (
 type UserStore interface {
 	GetAll(ctx context.Context) ([]models.User, error)
 	Create(ctx context.Context, user models.User) (models.User, error)
+	GetByUsername(ctx context.Context, username string) (models.User, error)
 }

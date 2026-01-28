@@ -54,7 +54,7 @@ func (h *UserHandler) createUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fill in required fields", http.StatusBadRequest)
 		return
 	}
-	// call db method create to insert new user
+	// call user service which will call db method create to insert new user after password hash
 	created, err := h.service.CreateUser(r.Context(), newUser)
 	if err != nil {
 		http.Error(w, "failed to create user: "+err.Error(), http.StatusInternalServerError)
@@ -65,4 +65,27 @@ func (h *UserHandler) createUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
+}
+
+func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var userLoginPayload models.UserLoginPayload
+	if err := json.NewDecoder(r.Body).Decode(&userLoginPayload); err != nil {
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
+	}
+	if userLoginPayload.UserName == "" || userLoginPayload.Password == "" {
+		http.Error(w, "fill in required credentials", http.StatusBadRequest)
+		return
+	}
+	// call login service
+	user, err := h.service.LoginUser(r.Context(), userLoginPayload)
+	if err != nil {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
+
 }

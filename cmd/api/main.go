@@ -37,6 +37,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService)
 	http.Handle("/posts", postHandler)
 	http.Handle("/users", userHandler)
+	http.HandleFunc("/login", userHandler.SignIn)
 
 	addr := ":8080"
 	server := &http.Server{

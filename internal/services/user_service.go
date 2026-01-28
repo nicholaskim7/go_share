@@ -32,3 +32,19 @@ func (s *UserService) CreateUser(ctx context.Context, user models.User) (models.
 	user.Password = string(hashed)
 	return s.store.Create(ctx, user)
 }
+
+func (s *UserService) LoginUser(ctx context.Context, userPayload models.UserLoginPayload) (models.User, error) {
+	// call db method to fetch user by username from login payload
+	user, err := s.store.GetByUsername(ctx, userPayload.UserName)
+	if err != nil {
+		return models.User{}, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userPayload.Password))
+	if err != nil {
+		// passwords dont match
+		return models.User{}, err
+	}
+	// clear user password, dont send hash to client
+	user.Password = ""
+	return user, nil
+}

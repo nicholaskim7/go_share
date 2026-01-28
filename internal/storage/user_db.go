@@ -58,5 +58,27 @@ func (s *UserDBStore) Create(ctx context.Context, user models.User) (models.User
 	if err != nil {
 		return models.User{}, err
 	}
-	return user, err
+	return user, nil
+}
+
+func (s *UserDBStore) GetByUsername(ctx context.Context, username string) (models.User, error) {
+	var user models.User
+	err := s.db.QueryRowContext(
+		ctx,
+		`SELECT id, first_name, last_name, user_name, email, password, date_created
+		 FROM users WHERE user_name = $1`,
+		username,
+	).Scan(
+		&user.ID,
+		&user.FirstName,
+		&user.LastName,
+		&user.UserName,
+		&user.Email,
+		&user.Password,
+		&user.DateCreated,
+	)
+	if err != nil {
+		return models.User{}, err
+	}
+	return user, nil
 }
