@@ -61,3 +61,36 @@ func (s *PostDBStore) Create(ctx context.Context, post models.Post) (models.Post
 	}
 	return post, err
 }
+
+func (s *PostDBStore) GetByUsername(ctx context.Context, username string) ([]models.Post, error) {
+	rows, err := s.db.QueryContext(
+		ctx,
+		`SELECT p.id, p.user_id, p.title, p.body, p.tags, p.files, p.date_created 
+		 FROM posts p
+		 JOIN users u ON p.user_id = u.id
+		 WHERE u.user_name = $1`,
+		username)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []models.Post
+	for rows.Next() {
+		var p models.Post
+		if err := rows.Scan(
+			&p.ID,
+			&p.UserID,
+			&p.Title,
+			&p.Body,
+			pq.Array(&p.Tags),
+			pq.Array(&p.Files),
+			&p.DateCreated,
+		); err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	return posts, rows.Err()
+}

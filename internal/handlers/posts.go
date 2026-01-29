@@ -18,32 +18,20 @@ func NewPostHandler(store storage.PostStore) *PostHandler {
 	return &PostHandler{store: store}
 }
 
-func (h *PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getPosts(w, r)
-	case http.MethodPost:
-		h.createPost(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (h *PostHandler) getPosts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := h.store.GetAll(r.Context())
 	if err != nil {
 		http.Error(w, "failed to fetch posts", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(posts); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (h *PostHandler) createPost(w http.ResponseWriter, r *http.Request) {
+func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var newPost models.Post
 	// decode request body into new post
@@ -65,4 +53,24 @@ func (h *PostHandler) createPost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
+}
+
+func (h *PostHandler) GetPostsByUsername(w http.ResponseWriter, r *http.Request) {
+	// get username from url path
+	// maintain restfullness of get request
+	userName := r.PathValue("username")
+	if userName == "" {
+		http.Error(w, "no username provided", http.StatusBadRequest)
+		return
+	}
+	posts, err := h.store.GetByUsername(r.Context(), userName)
+	if err != nil {
+		http.Error(w, "failed to fetch posts by username", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(posts); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
