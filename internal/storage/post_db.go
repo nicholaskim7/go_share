@@ -94,3 +94,34 @@ func (s *PostDBStore) GetByUsername(ctx context.Context, username string) ([]mod
 	}
 	return posts, rows.Err()
 }
+
+func (s *PostDBStore) GetByTag(ctx context.Context, tag string) ([]models.Post, error) {
+	rows, err := s.db.QueryContext(
+		ctx,
+		`SELECT id, user_id, title, body, tags, files, date_created FROM posts
+		 WHERE $1 = ANY(tags)`,
+		tag)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []models.Post
+	for rows.Next() {
+		var p models.Post
+		if err := rows.Scan(
+			&p.ID,
+			&p.UserID,
+			&p.Title,
+			&p.Body,
+			pq.Array(&p.Tags),
+			pq.Array(&p.Files),
+			&p.DateCreated,
+		); err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	return posts, rows.Err()
+}

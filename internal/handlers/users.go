@@ -3,7 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/nicholaskim7/go_share/internal/auth"
 	"github.com/nicholaskim7/go_share/internal/models"
 	"github.com/nicholaskim7/go_share/internal/services"
 )
@@ -84,6 +86,21 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
+	// generate JWT token
+	token, err := auth.CreateToken(user.ID)
+	if err != nil {
+		http.Error(w, "error generating session", http.StatusInternalServerError)
+		return
+	}
+	// set http-only cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,  // javascript cannot read this (No XSS)
+		Secure:   false, // set to true in production (requires https)
+		Path:     "/",
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
