@@ -38,15 +38,16 @@ func main() {
 	userService := services.NewUserService(userStore)
 	// inject Store/service dependency to Handlers
 	postHandler := handlers.NewPostHandler(postStore)
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, userStore)
 
 	// public routes (no auth needed)
 	http.HandleFunc("GET /posts", postHandler.GetPosts)
 	http.HandleFunc("GET /posts/user/{username}", postHandler.GetPostsByUsername)
 	http.HandleFunc("GET /posts/tag/{tag}", postHandler.GetPostsByTag)
-	// if needed refractor user routing like posts
-	http.Handle("/users", userHandler)
+
+	http.HandleFunc("GET /users", userHandler.GetUsers)
 	http.HandleFunc("/login", userHandler.SignIn)
+	http.HandleFunc("GET /users/user/{username}", userHandler.GetUserByUsername)
 
 	// protected routes wrapped in middleware
 	http.HandleFunc("POST /posts", middleware.AuthMiddleware(postHandler.CreatePost))

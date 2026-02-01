@@ -8,29 +8,31 @@ import (
 	"github.com/nicholaskim7/go_share/internal/auth"
 	"github.com/nicholaskim7/go_share/internal/models"
 	"github.com/nicholaskim7/go_share/internal/services"
+	"github.com/nicholaskim7/go_share/internal/storage"
 )
 
 type UserHandler struct {
 	service *services.UserService
+	store   *storage.UserDBStore
 }
 
-func NewUserHandler(service *services.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service *services.UserService, store *storage.UserDBStore) *UserHandler {
+	return &UserHandler{service: service, store: store}
 }
 
-func (h *UserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getUsers(w, r)
-	case http.MethodPost:
-		h.createUser(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
+// func (h *UserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// 	switch r.Method {
+// 	case http.MethodGet:
+// 		h.getUsers(w, r)
+// 	case http.MethodPost:
+// 		h.createUser(w, r)
+// 	default:
+// 		w.Header().Set("Allow", "GET, POST")
+// 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+// 	}
+// }
 
-func (h *UserHandler) getUsers(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	users, err := h.service.GetAllUsers(r.Context())
 	if err != nil {
@@ -43,7 +45,7 @@ func (h *UserHandler) getUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *UserHandler) createUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var newUser models.User
 	// decode request body into new user
@@ -104,5 +106,23 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
+}
 
+func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	if username == "" {
+		http.Error(w, "no username provided", http.StatusBadRequest)
+		return
+	}
+	user, err := h.store.GetByUsername(r.Context(), username)
+	if err != nil {
+		http.Error(w, "failed to fetch user by username", http.StatusInternalServerError)
+		return
+	}
+	user.Password = ""
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
