@@ -45,6 +45,25 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	if username == "" {
+		http.Error(w, "no username provided", http.StatusBadRequest)
+		return
+	}
+	user, err := h.store.GetByUsername(r.Context(), username)
+	if err != nil {
+		http.Error(w, "failed to fetch user by username", http.StatusInternalServerError)
+		return
+	}
+	user.Password = ""
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var newUser models.User
@@ -108,21 +127,18 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	username := r.PathValue("username")
-	if username == "" {
-		http.Error(w, "no username provided", http.StatusBadRequest)
-		return
-	}
-	user, err := h.store.GetByUsername(r.Context(), username)
-	if err != nil {
-		http.Error(w, "failed to fetch user by username", http.StatusInternalServerError)
-		return
-	}
-	user.Password = ""
+func (h *UserHandler) SignOut(w http.ResponseWriter, r *http.Request) {
+	// create deletion cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",              // empty value
+		Expires:  time.Unix(0, 0), // expired already
+		MaxAge:   -1,              // tells browser to delete this cookie
+		HttpOnly: true,            // javascript cannot read this (No XSS)
+		Secure:   false,           // set to true in production (requires https)
+		Path:     "/",
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	w.Write([]byte(`{"message": "logged out successfully"}`))
 }
