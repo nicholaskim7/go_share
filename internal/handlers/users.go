@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -53,6 +55,10 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	}
 	user, err := h.store.GetByUsername(r.Context(), username)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "user not found", http.StatusNotFound) // 404
+			return
+		}
 		http.Error(w, "failed to fetch user by username", http.StatusInternalServerError)
 		return
 	}

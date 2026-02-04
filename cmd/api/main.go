@@ -16,21 +16,31 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if err := godotenv.Load(); err != nil {
+		// in Docker, variables come from the environment not a file
+		log.Println("No .env file found, relying on system environment variables")
 	}
 
-	// database set up
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	// database set up with Retry
+	var db *sql.DB
+	var err error
+	for i := 0; i < 10; i++ {
+		db, err = sql.Open("postgres", os.Getenv("DATABASE_URL"))
+		if err == nil {
+			if err := db.Ping(); err == nil {
+				log.Println("Database connection established")
+				break
+			}
+		}
+		log.Printf("Failed to connect to database (attempt %d/10): %v", i+1, err)
+		log.Println("Backing off for 2 seconds...")
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Could not connect to database after retries:", err)
 	}
 	defer db.Close()
-	if err := db.Ping(); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Database connection established")
 
 	// dependencies
 	postStore := storage.NewPostDBStore(db)
@@ -47,12 +57,13 @@ func main() {
 
 	http.HandleFunc("POST /users", userHandler.CreateUser)
 	http.HandleFunc("GET /users", userHandler.GetUsers)
-	http.HandleFunc("/login", userHandler.SignIn)
+	http.HandleFunc("POST /login", userHandler.SignIn)
 	http.HandleFunc("GET /users/user/{username}", userHandler.GetUserByUsername)
 
 	// protected routes wrapped in middleware
 	http.HandleFunc("POST /posts", middleware.AuthMiddleware(postHandler.CreatePost))
-	http.HandleFunc("/logout", userHandler.SignOut)
+	// cannot logout if not logged in
+	http.HandleFunc("POST /logout", middleware.AuthMiddleware(userHandler.SignOut))
 
 	addr := ":8080"
 	server := &http.Server{

@@ -76,7 +76,7 @@ func (s *PostDBStore) GetByUsername(ctx context.Context, username string) ([]mod
 	}
 	defer rows.Close()
 
-	var posts []models.Post
+	posts := []models.Post{}
 	for rows.Next() {
 		var p models.Post
 		if err := rows.Scan(
@@ -107,7 +107,7 @@ func (s *PostDBStore) GetByTag(ctx context.Context, tag string) ([]models.Post, 
 	}
 	defer rows.Close()
 
-	var posts []models.Post
+	posts := []models.Post{}
 	for rows.Next() {
 		var p models.Post
 		if err := rows.Scan(

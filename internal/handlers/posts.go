@@ -2,7 +2,9 @@ package handlers
 
 // implementing handlers that will use db functions
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/nicholaskim7/go_share/internal/middleware"
@@ -22,6 +24,10 @@ func NewPostHandler(store storage.PostStore) *PostHandler {
 func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := h.store.GetAll(r.Context())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "posts not found", http.StatusNotFound) // 404
+			return
+		}
 		http.Error(w, "failed to fetch posts", http.StatusInternalServerError)
 		return
 	}
@@ -74,6 +80,10 @@ func (h *PostHandler) GetPostsByUsername(w http.ResponseWriter, r *http.Request)
 	}
 	posts, err := h.store.GetByUsername(r.Context(), userName)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "posts from username not found", http.StatusNotFound) // 404
+			return
+		}
 		http.Error(w, "failed to fetch posts by username", http.StatusInternalServerError)
 		return
 	}
@@ -94,6 +104,10 @@ func (h *PostHandler) GetPostsByTag(w http.ResponseWriter, r *http.Request) {
 	}
 	posts, err := h.store.GetByTag(r.Context(), tag)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "posts by tag not found", http.StatusNotFound) // 404
+			return
+		}
 		http.Error(w, "failed to fetch posts by tag", http.StatusInternalServerError)
 		return
 	}

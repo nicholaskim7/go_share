@@ -1,0 +1,14 @@
+# Ignore git history
+.git
+
+# Ignore secrets
+.env
+.env.local
+
+# Ignore local binaries and builds
+main
+/bin
+/dist
+
+# Ignore local database volume
+postgres_data

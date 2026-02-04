@@ -5,8 +5,31 @@ MIGRATION_PATH=cmd/migrate/migrations
 
 # Run the application
 run:
-	@echo "Running the API..."
+	@echo "Running the API locally..."
 	go run cmd/api/main.go
+
+docker-run:
+	@echo "Starting Docker environment..."
+	docker compose up --build -d
+
+# may want to run our application locally while developing (must do make run)
+docker-run-db:
+	@echo "Starting Docker database..."
+	docker compose up db -d
+
+# Stop all containers
+docker-down:
+	@echo "Stopping Docker environment..."
+	docker compose down
+
+# Stop containers AND delete the database volume (Fresh Start)
+docker-clean:
+	@echo "Stopping Docker and removing volumes..."
+	docker compose down -v
+
+docker-logs:
+	@echo "Following logs..."
+	docker compose logs -f api
 
 # Create a new migration file
 # Usage: make migration name=create_some_table
