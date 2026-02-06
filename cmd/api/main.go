@@ -26,11 +26,15 @@ func main() {
 	var err error
 	for i := 0; i < 10; i++ {
 		db, err = sql.Open("postgres", os.Getenv("DATABASE_URL"))
+		if err != nil {
+			log.Printf("sql.Open failed: %v", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		err = db.Ping()
 		if err == nil {
-			if err := db.Ping(); err == nil {
-				log.Println("Database connection established")
-				break
-			}
+			log.Println("Database connection established")
+			break
 		}
 		log.Printf("Failed to connect to database (attempt %d/10): %v", i+1, err)
 		log.Println("Backing off for 2 seconds...")
@@ -41,6 +45,11 @@ func main() {
 		log.Fatal("Could not connect to database after retries:", err)
 	}
 	defer db.Close()
+
+	// create uploads directory
+	if _, err := os.Stat("./uploads"); os.IsNotExist(err) {
+		os.Mkdir("./uploads", 0755)
+	}
 
 	// dependencies
 	postStore := storage.NewPostDBStore(db)
@@ -64,6 +73,10 @@ func main() {
 	http.HandleFunc("POST /posts", middleware.AuthMiddleware(postHandler.CreatePost))
 	// cannot logout if not logged in
 	http.HandleFunc("POST /logout", middleware.AuthMiddleware(userHandler.SignOut))
+
+	// serve static files
+	fs := http.FileServer(http.Dir("./uploads"))
+	http.Handle("/uploads/", http.StripPrefix("/uploads", fs))
 
 	addr := ":8080"
 	server := &http.Server{

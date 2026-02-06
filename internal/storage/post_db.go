@@ -75,7 +75,6 @@ func (s *PostDBStore) GetByUsername(ctx context.Context, username string) ([]mod
 		return nil, err
 	}
 	defer rows.Close()
-
 	posts := []models.Post{}
 	for rows.Next() {
 		var p models.Post
@@ -101,12 +100,10 @@ func (s *PostDBStore) GetByTag(ctx context.Context, tag string) ([]models.Post, 
 		`SELECT id, user_id, title, body, tags, files, date_created FROM posts
 		 WHERE $1 = ANY(tags)`,
 		tag)
-
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
 	posts := []models.Post{}
 	for rows.Next() {
 		var p models.Post

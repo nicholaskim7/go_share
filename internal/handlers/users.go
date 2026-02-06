@@ -130,7 +130,11 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+
+	json.NewEncoder(w).Encode(models.LoginResponse{
+		Token: token,
+		User:  user,
+	})
 }
 
 func (h *UserHandler) SignOut(w http.ResponseWriter, r *http.Request) {

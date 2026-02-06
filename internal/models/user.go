@@ -17,3 +17,8 @@ type UserLoginPayload struct {
 	UserName string `json:"user_name"`
 	Password string `json:"password"`
 }
+
+type LoginResponse struct {
+	Token string `json:"token"`
+	User  User   `json:"user"`
+}

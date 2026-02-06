@@ -5,7 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/nicholaskim7/go_share/internal/middleware"
 	"github.com/nicholaskim7/go_share/internal/models"
@@ -46,11 +50,18 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal auth error", http.StatusInternalServerError)
 		return
 	}
-	var newPost models.Post
-	// decode request body into new post
-	if err := json.NewDecoder(r.Body).Decode(&newPost); err != nil {
-		http.Error(w, "invalid json body", http.StatusBadRequest)
+	// must use multipart/form-data to send files along with text
+	err := r.ParseMultipartForm(10 << 20) //limit file size to 10MB
+	if err != nil {
+		http.Error(w, "File too large", http.StatusBadRequest)
 		return
+	}
+	// extract the normal post data
+	var newPost models.Post
+	newPost.Title = r.FormValue("title")
+	newPost.Body = r.FormValue("body")
+	if values, ok := r.MultipartForm.Value["tags"]; ok {
+		newPost.Tags = values
 	}
 	// force author id to be logged in user
 	newPost.UserID = userID
@@ -59,6 +70,38 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title or body is required", http.StatusBadRequest)
 		return
 	}
+	// handle file uploads
+	formFiles := r.MultipartForm.File["files"]
+	for _, fileHeader := range formFiles {
+		// open the file stream
+		file, err := fileHeader.Open()
+		if err != nil {
+			http.Error(w, "error reading file", http.StatusInternalServerError)
+			return
+		}
+		// generate unique name (timestamp + file name)
+		uniqueFileName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), fileHeader.Filename)
+		// create the file on the servers disk
+		// in the future replace with s3 storage
+		dst, err := os.Create("./uploads/" + uniqueFileName)
+		if err != nil {
+			file.Close()
+			http.Error(w, "server storage error", http.StatusInternalServerError)
+			return
+		}
+		// copy content to the destination file
+		_, err = io.Copy(dst, file)
+		//close both files
+		dst.Close()
+		file.Close()
+		if err != nil {
+			http.Error(w, "error saving file", http.StatusInternalServerError)
+			return
+		}
+		// append the stored filename to the struct
+		newPost.Files = append(newPost.Files, uniqueFileName)
+	}
+
 	// call db method create to insert new post
 	created, err := h.store.Create(r.Context(), newPost)
 	if err != nil {
