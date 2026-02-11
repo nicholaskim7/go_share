@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/nicholaskim7/go_share/internal/middleware"
@@ -159,4 +160,37 @@ func (h *PostHandler) GetPostsByTag(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(posts); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (h *PostHandler) DeletePostById(w http.ResponseWriter, r *http.Request) {
+	// get logged in user id from context
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+	if !ok {
+		http.Error(w, "internal auth error", http.StatusInternalServerError)
+		return
+	}
+
+	// get post id from url
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		http.Error(w, "no post id provided", http.StatusBadRequest)
+		return
+	}
+	postId, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid post id format", http.StatusBadRequest)
+		return
+	}
+	// this is how we ensure only logged in user can delete their post
+	err = h.store.Delete(r.Context(), postId, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "post not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "failed to delete post", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
 }

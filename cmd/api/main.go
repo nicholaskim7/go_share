@@ -73,6 +73,7 @@ func main() {
 	http.HandleFunc("POST /posts", middleware.AuthMiddleware(postHandler.CreatePost))
 	// cannot logout if not logged in
 	http.HandleFunc("POST /logout", middleware.AuthMiddleware(userHandler.SignOut))
+	http.HandleFunc("DELETE /posts/id/{id}", middleware.AuthMiddleware(postHandler.DeletePostById))
 
 	// serve static files
 	fs := http.FileServer(http.Dir("./uploads"))

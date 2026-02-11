@@ -10,6 +10,7 @@ import (
 type PostStore interface {
 	GetAll(ctx context.Context) ([]models.Post, error)
 	Create(ctx context.Context, post models.Post) (models.Post, error)
+	Delete(ctx context.Context, postId int64, userId int64) error
 	GetByUsername(ctx context.Context, username string) ([]models.Post, error)
 	GetByTag(ctx context.Context, tag string) ([]models.Post, error)
 }

@@ -62,6 +62,20 @@ func (s *PostDBStore) Create(ctx context.Context, post models.Post) (models.Post
 	return post, err
 }
 
+func (s *PostDBStore) Delete(ctx context.Context, postId int64, userId int64) error {
+	var deletedId int64
+	err := s.db.QueryRowContext(
+		ctx,
+		`DELETE FROM posts WHERE id = $1 AND user_id = $2 RETURNING id`,
+		postId,
+		userId,
+	).Scan(&deletedId)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (s *PostDBStore) GetByUsername(ctx context.Context, username string) ([]models.Post, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
